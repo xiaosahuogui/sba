@@ -252,7 +252,7 @@ check_install() {
     local SING_BOX_LATEST=$(wget --no-check-certificate -qO- ${GH_PROXY}https://api.github.com/repos/SagerNet/sing-box/releases | 
       awk -F '["v]' -v var="tag_name.*$VERSION_LATEST" '$0 ~ var && $5 !~ /alpha|beta|rc/ {print $5; exit}')
 
-    SING_BOX_LATEST=${SING_BOX_LATEST:-'1.10.0'}
+    SING_BOX_LATEST=${SING_BOX_LATEST:-'1.9.4'}
 
     wget --no-check-certificate -c $TEMP_DIR/sing-box.tar.gz ${GH_PROXY}https://github.com/SagerNet/sing-box/releases/download/v$SING_BOX_LATEST/sing-box-$SING_BOX_LATEST-linux-$SING_BOX_ARCH.tar.gz -qO- | tar xz -C $TEMP_DIR sing-box-$SING_BOX_LATEST-linux-$SING_BOX_ARCH/sing-box
     mv $TEMP_DIR/sing-box-$SING_BOX_LATEST-linux-$SING_BOX_ARCH/sing-box $TEMP_DIR >/dev/null 2>&1
