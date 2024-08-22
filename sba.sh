@@ -1279,24 +1279,34 @@ version() {
   local ARGO_LOCAL=$($WORK_DIR/cloudflared -v | awk '{for (i=0; i<NF; i++) if ($i=="version") {print $(i+1)}}')
   echo -e "\n ARGO 本地版本: $ARGO_LOCAL         最新版本: $ARGO_ONLINE"
   if [[ -n "$ARGO_ONLINE" && "$ARGO_ONLINE" != "$ARGO_LOCAL" ]]; then
-    echo " 需要升级 ARGO"
+    read -p " 升级 ARGO 请按 [y]，默认不升级: " choice_argo
+    if [[ "${choice_argo,,}" == "y" ]]; then
+      wget --no-check-certificate -O $TEMP_DIR/cloudflared ${GH_PROXY}https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$ARGO_ARCH
+      if [ -s $TEMP_DIR/cloudflared ]; then
+        cmd_systemctl disable argo
+        chmod +x $TEMP_DIR/cloudflared && mv $TEMP_DIR/cloudflared $WORK_DIR/cloudflared
+        cmd_systemctl enable argo && [ "$(systemctl is-active argo)" = 'active' ] && echo " Argo 已成功升级并启用" || echo " Argo 升级失败，服务未能启用"
+      else
+        echo " Argo 下载失败，请重试"
+      fi
+    else
+      echo " 取消升级 Argo"
+    fi
   else
     echo " 不需要升级 ARGO"
   fi
 
   # Sing-box version check (stable releases only)
   local SINGBOX_LATEST=$(wget --no-check-certificate -qO- ${GH_PROXY}https://api.github.com/repos/SagerNet/sing-box/releases |
-  awk -F '["v-]' '/tag_name/{print $5}' |
-  grep -vE 'alpha|beta|rc' |
-  sort -Vr |
-  sed -n '1p')
+  jq -r 'map(select(.prerelease == false)) | .[0].tag_name' | 
+  sed 's/^v//')
 
   local SINGBOX_LOCAL=$($WORK_DIR/sing-box version | awk '/version/{print $NF}')
   echo -e "\n Sing-box 本地版本: $SINGBOX_LOCAL        最新版本: $SINGBOX_LATEST"
   
   if [[ -n "$SINGBOX_LATEST" && "$SINGBOX_LATEST" != "$SINGBOX_LOCAL" ]]; then
-    read -p " 升级请按 [y]，默认不升级: " choice
-    if [[ "${choice,,}" == "y" ]]; then
+    read -p " 升级 Sing-box 请按 [y]，默认不升级: " choice_singbox
+    if [[ "${choice_singbox,,}" == "y" ]]; then
       wget --no-check-certificate -c ${GH_PROXY}https://github.com/SagerNet/sing-box/releases/download/v$SINGBOX_LATEST/sing-box-$SINGBOX_LATEST-linux-$SING_BOX_ARCH.tar.gz -qO- | tar xz -C $TEMP_DIR sing-box-$SINGBOX_LATEST-linux-$SING_BOX_ARCH/sing-box
       if [ -s $TEMP_DIR/sing-box-$SINGBOX_LATEST-linux-$SING_BOX_ARCH/sing-box ]; then
         cmd_systemctl disable sing-box
@@ -1313,7 +1323,6 @@ version() {
     echo " 不需要升级 Sing-box"
   fi
 }
-
 
 # 判断当前 sba 的运行状态，并对应的给菜单和动作赋值
 menu_setting() {
