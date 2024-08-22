@@ -1274,22 +1274,20 @@ uninstall() {
 
 # Argo 与 Sing-box 的最新版本
 version() {
-  # Argo 版本
+  # Argo version
   local ONLINE=$(wget --no-check-certificate -qO- ${GH_PROXY}https://api.github.com/repos/cloudflare/cloudflared/releases/latest | awk -F '"' '/"tag_name"/{print $4}')
   local LOCAL=$($WORK_DIR/cloudflared -v | awk '{for (i=0; i<NF; i++) if ($i=="version") {print $(i+1)}}')
   local APP=ARGO && info "\n $(text 43) "
   [[ -n "$ONLINE" && "$ONLINE" != "$LOCAL" ]] && reading "\n $(text 9) " UPDATE[0] || info " $(text 44) "
 
-  # Sing-box 版本（仅检查稳定版）
+  # Sing-box version (stable releases only)
   local VERSION_LATEST=$(wget --no-check-certificate -qO- ${GH_PROXY}https://api.github.com/repos/SagerNet/sing-box/releases | 
   awk -F '["v-]' '/tag_name/{print $5}' | 
   grep -vE 'alpha|beta|rc' | 
   sort -Vr | 
   sed -n '1p')
 
-  local ONLINE=$(wget --no-check-certificate -qO- ${GH_PROXY}https://api.github.com/repos/SagerNet/sing-box/releases | 
-  awk -F '["v]' -v var="tag_name.*$VERSION_LATEST" '$0 ~ var {print $5; exit}')
-
+  local ONLINE=$VERSION_LATEST
   local LOCAL=$($WORK_DIR/sing-box version | awk '/version/{print $NF}')
   local APP=Sing-box && info "\n $(text 43) "
   [[ -n "$ONLINE" && "$ONLINE" != "$LOCAL" ]] && reading "\n $(text 9) " UPDATE[1] || info " $(text 44) "
@@ -1319,6 +1317,7 @@ version() {
     fi
   fi
 }
+
 
 
 # 判断当前 sba 的运行状态，并对应的给菜单和动作赋值
