@@ -1274,50 +1274,45 @@ uninstall() {
 
 # Argo 与 Sing-box 的最新版本
 version() {
-  # Argo version
-  local ONLINE=$(wget --no-check-certificate -qO- ${GH_PROXY}https://api.github.com/repos/cloudflare/cloudflared/releases/latest | awk -F '"' '/"tag_name"/{print $4}')
-  local LOCAL=$($WORK_DIR/cloudflared -v | awk '{for (i=0; i<NF; i++) if ($i=="version") {print $(i+1)}}')
-  local APP=ARGO && info "\n $(text 43) "
-  [[ -n "$ONLINE" && "$ONLINE" != "$LOCAL" ]] && reading "\n $(text 9) " UPDATE[0] || info " $(text 44) "
+  # Argo version check
+  local ARGO_ONLINE=$(wget --no-check-certificate -qO- ${GH_PROXY}https://api.github.com/repos/cloudflare/cloudflared/releases/latest | awk -F '"' '/"tag_name"/{print $4}')
+  local ARGO_LOCAL=$($WORK_DIR/cloudflared -v | awk '{for (i=0; i<NF; i++) if ($i=="version") {print $(i+1)}}')
+  echo -e "\n ARGO 本地版本: $ARGO_LOCAL         最新版本: $ARGO_ONLINE"
+  if [[ -n "$ARGO_ONLINE" && "$ARGO_ONLINE" != "$ARGO_LOCAL" ]]; then
+    echo " 需要升级 ARGO"
+  else
+    echo " 不需要升级 ARGO"
+  fi
 
-  # Sing-box version (stable releases only)
-  local VERSION_LATEST=$(wget --no-check-certificate -qO- ${GH_PROXY}https://api.github.com/repos/SagerNet/sing-box/releases | 
-  awk -F '["v-]' '/tag_name/{print $5}' | 
-  grep -vE 'alpha|beta|rc' | 
-  sort -Vr | 
+  # Sing-box version check (stable releases only)
+  local SINGBOX_LATEST=$(wget --no-check-certificate -qO- ${GH_PROXY}https://api.github.com/repos/SagerNet/sing-box/releases |
+  awk -F '["v-]' '/tag_name/{print $5}' |
+  grep -vE 'alpha|beta|rc' |
+  sort -Vr |
   sed -n '1p')
 
-  local ONLINE=$VERSION_LATEST
-  local LOCAL=$($WORK_DIR/sing-box version | awk '/version/{print $NF}')
-  local APP=Sing-box && info "\n $(text 43) "
-  [[ -n "$ONLINE" && "$ONLINE" != "$LOCAL" ]] && reading "\n $(text 9) " UPDATE[1] || info " $(text 44) "
-
-  [[ ${UPDATE[*],,} =~ 'y' ]] && check_system_info
-
-  if [ ${UPDATE[0],,} = 'y' ]; then
-    wget --no-check-certificate -O $TEMP_DIR/cloudflared ${GH_PROXY}https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$ARGO_ARCH
-    if [ -s $TEMP_DIR/cloudflared ]; then
-      cmd_systemctl disable argo
-      chmod +x $TEMP_DIR/cloudflared && mv $TEMP_DIR/cloudflared $WORK_DIR/cloudflared
-      cmd_systemctl enable argo && [ "$(systemctl is-active argo)" = 'active' ] && info " Argo $(text 28) $(text 37)" || error " Argo $(text 28) $(text 38) "
+  local SINGBOX_LOCAL=$($WORK_DIR/sing-box version | awk '/version/{print $NF}')
+  echo -e "\n Sing-box 本地版本: $SINGBOX_LOCAL        最新版本: $SINGBOX_LATEST"
+  
+  if [[ -n "$SINGBOX_LATEST" && "$SINGBOX_LATEST" != "$SINGBOX_LOCAL" ]]; then
+    read -p " 升级请按 [y]，默认不升级: " choice
+    if [[ "${choice,,}" == "y" ]]; then
+      wget --no-check-certificate -c ${GH_PROXY}https://github.com/SagerNet/sing-box/releases/download/v$SINGBOX_LATEST/sing-box-$SINGBOX_LATEST-linux-$SING_BOX_ARCH.tar.gz -qO- | tar xz -C $TEMP_DIR sing-box-$SINGBOX_LATEST-linux-$SING_BOX_ARCH/sing-box
+      if [ -s $TEMP_DIR/sing-box-$SINGBOX_LATEST-linux-$SING_BOX_ARCH/sing-box ]; then
+        cmd_systemctl disable sing-box
+        mv $TEMP_DIR/sing-box-$SINGBOX_LATEST-linux-$SING_BOX_ARCH/sing-box $WORK_DIR
+        rm -rf $TEMP_DIR/sing-box-$SINGBOX_LATEST-linux-$SING_BOX_ARCH
+        cmd_systemctl enable sing-box && [ "$(systemctl is-active sing-box)" = 'active' ] && echo " Sing-box 已成功升级并启用" || echo " Sing-box 升级失败，服务未能启用"
+      else
+        echo " Sing-box 下载失败，请重试"
+      fi
     else
-      local APP=ARGO && error "\n $(text 48) "
+      echo " 取消升级 Sing-box"
     fi
-  fi
-
-  if [ ${UPDATE[1],,} = 'y' ]; then
-    wget --no-check-certificate -c ${GH_PROXY}https://github.com/SagerNet/sing-box/releases/download/v$ONLINE/sing-box-$ONLINE-linux-$SING_BOX_ARCH.tar.gz -qO- | tar xz -C $TEMP_DIR sing-box-$ONLINE-linux-$SING_BOX_ARCH/sing-box
-    if [ -s $TEMP_DIR/sing-box-$ONLINE-linux-$SING_BOX_ARCH/sing-box ]; then
-      cmd_systemctl disable sing-box
-      mv $TEMP_DIR/sing-box-$ONLINE-linux-$SING_BOX_ARCH/sing-box $WORK_DIR
-      rm -rf $TEMP_DIR/sing-box-$ONLINE-linux-$SING_BOX_ARCH
-      cmd_systemctl enable sing-box && [ "$(systemctl is-active sing-box)" = 'active' ] && info " Sing-box $(text 28) $(text 37)" || error " Sing-box  $(text 28) $(text 38) "
-    else
-      local APP=Sing-box && error "\n $(text 48) "
-    fi
+  else
+    echo " 不需要升级 Sing-box"
   fi
 }
-
 
 
 # 判断当前 sba 的运行状态，并对应的给菜单和动作赋值
