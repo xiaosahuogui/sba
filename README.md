@@ -62,7 +62,7 @@
 * 极速安装，即可交互式安装，也可像 docker compose 一样的非交互式安装，提前把所有的参数放到一个配置文件，全程不到5秒。
 
 
-## sba for VPS 运行脚本:
+## sba for VPS 运行脚本（改为使用稳定版singbox）:
 
 ```
 bash <(wget -qO- https://raw.githubusercontent.com/xiaosahuogui/sba/main/sba.sh)
